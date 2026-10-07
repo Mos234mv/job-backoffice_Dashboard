@@ -2,59 +2,120 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\JobApplication;
+use App\Models\JobVacancy;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-   
     public function index()
     {
-        return view('dashboard.index');
+        if (Auth::user()?->role == 'admin') {
+            $analytics = $this->adminDashboard();
+        } else {
+            $analytics = $this->companyOwnerDashboard();
+        }
+
+        return view('dashboard.index', compact(['analytics']));
     }
 
-    
-    public function create()
+    private function adminDashboard()
     {
-        //
+        // Last 30 days active users (job-seeker role)
+        $activeUsers = User::where('last_login_at', '>=', now()->subDays(30))
+            ->where('role', 'job-seeker')->count();
+
+        // Total jobs (not deleted)
+        $totalJobs = JobVacancy::whereNull('deleted_at')->count();
+
+        // Total applications (not deleted)
+        $totalApplications = JobApplication::whereNull('deleted_at')->count();
+
+        // Most applied jobs
+        $mostAppliedJobs = JobVacancy::withCount('jobApplications as totalCount')
+            ->whereNull('deleted_at')
+            ->limit(5)
+            ->orderByDesc('totalCount')
+            ->get();
+
+        // Conversion rates
+        $conversionRates = JobVacancy::withCount('jobApplications as totalCount')
+            ->having('totalCount', '>', 0)
+            ->limit(5)
+            ->orderByDesc('totalCount')
+            ->get()
+            ->map(function ($job) {
+                if ($job->viewCount > 0) {
+                    $job->conversionRate = round($job->totalCount / $job->viewCount * 100, 2);
+                } else {
+                    $job->conversionRate = 0;
+                }
+
+                return $job;
+            });
+
+        $analytics = [
+            'activeUsers' => $activeUsers,
+            'totalJobs' => $totalJobs,
+            'totalApplications' => $totalApplications,
+            'mostAppliedJobs' => $mostAppliedJobs,
+            'conversionRates' => $conversionRates,
+        ];
+
+        return $analytics;
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    private function companyOwnerDashboard()
     {
-        //
-    }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+       $company = Auth::user()?->company;
+        // filter active users by applying to jobs of the company
+        $activeUsers = User::where('last_login_at', '>=', now()->subDays(30))
+            ->where('role', 'job-seeker')
+            ->whereHas('jobApplications', function ($query) use ($company) {
+                $query->whereIn('job_vacancy_id', $company->jobVacancies->pluck('id'));
+            })
+            ->count();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+        // total jobs of the company
+        $totalJobs = $company->jobVacancies->count();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+        // total applications of the company
+        $totalApplications = JobApplication::whereIn('job_vacancy_id', $company->jobVacancies->pluck('id'))->count();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        // most applied jobs of the company
+        $mostAppliedJobs = JobVacancy::withCount('jobApplications as totalCount')
+            ->whereIn('id', $company->jobVacancies->pluck('id'))
+            ->limit(5)
+            ->orderByDesc('totalCount')
+            ->get();
+
+        // conversion rates of the company
+        $conversionRates = JobVacancy::withCount('jobApplications as totalCount')
+            ->whereIn('id', $company->jobVacancies->pluck('id'))
+            ->having('totalCount', '>', 0)
+            ->limit(5)
+            ->orderByDesc('totalCount')
+            ->get()
+            ->map(function ($job) {
+                if ($job->viewCount > 0) {
+                    $job->conversionRate = round($job->totalCount / $job->viewCount * 100, 2);
+                } else {
+                    $job->conversionRate = 0;
+                }
+
+                return $job;
+            });
+
+        $analytics = [
+            'activeUsers' => $activeUsers,
+            'totalJobs' => $totalJobs,
+            'totalApplications' => $totalApplications,
+            'mostAppliedJobs' => $mostAppliedJobs,
+            'conversionRates' => $conversionRates,
+        ];
+
+        return $analytics;
     }
 }

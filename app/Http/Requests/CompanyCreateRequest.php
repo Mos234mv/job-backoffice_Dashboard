@@ -23,10 +23,16 @@ class CompanyCreateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', 'unique:companies,name'],
-            'address' => ['required', 'string', 'max:255'],
-            'industry' => ['required', 'string', 'max:255'],
-            'website' => ['nullable', 'string', 'url', 'max:255'],
+            // Company rules
+            'name' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+            'industry' => 'required|string|max:255',
+            'website' => 'nullable|string|max:255',
+
+            // Owner rules (نفس الأسماء المكتوبة في الفورم بالضبط)
+            'owner_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:6',
         ];
     }
 
@@ -43,9 +49,17 @@ class CompanyCreateRequest extends FormRequest
             'industry.required' => 'The industry field is required.',
             'industry.string' => 'The industry must be a string.',
             'industry.max' => 'The industry may not be greater than 255 characters.',
-            'website.string' => 'The website must be a string.',        
+            'website.string' => 'The website must be a string.',
             'website.url' => 'The website must be a valid URL.',
-            'website.max' => 'The website may not be greater than 255 characters.', 
+            'website.max' => 'The website may not be greater than 255 characters.',
+
+            // owner details
+            'owner_name.required' => 'The owner name field is required.',
+            'email.required' => 'The email field is required.',
+            'email.email' => 'The email must be a valid email address.',
+            'email.unique' => 'The email has already been taken.',
+            'password.required' => 'The password field is required.',
+            'password.min' => 'The password must be at least 6 characters.',
 
         ];
     }
