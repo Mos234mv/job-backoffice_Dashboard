@@ -8,6 +8,7 @@ use App\Models\JobCategories;
 use App\Models\JobVacancy;
 use App\Models\Resume;
 use App\Models\User;
+use Faker\Factory as Faker;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +22,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $faker = Faker::create();
 
         // seed the root admin
         User::firstOrCreate(
@@ -46,9 +48,9 @@ class DatabaseSeeder extends Seeder
         foreach ($jobdata['companies'] as $company) {
             // Create company owner
             $companyOwner = User::firstOrCreate(
-                ['email' => fake()->unique()->safeEmail()],
+                ['email' =>  $faker ()->unique()->safeEmail()],
                 [
-                    'name' => fake()->name(),
+                    'name' =>  $faker ()->name(),
                     'password' => Hash::make('12345678'),
                     'role' => 'company-owner',
                     'email_verified_at' => now(),
@@ -92,9 +94,9 @@ class DatabaseSeeder extends Seeder
 
             // Create applicant (job-seeker)
             $applicant = User::firstOrCreate([
-                'email' => fake()->unique()->safeEmail(),
+                'email' =>  $faker ()->unique()->safeEmail(),
             ], [
-                'name' => fake()->name(),
+                'name' =>  $faker ()->name(),
                 'password' => Hash::make('12345678'),
                 'role' => 'job-seeker',
                 'email_verified_at' => now(),
